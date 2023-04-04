@@ -8,12 +8,12 @@ contract medical{
 
 /*
     For testing:
-    patient_addr: 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
-    hospital: 0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
+    hospital: 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
 
     Others: 
+    0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
     0x78731D3Ca6b7E34aC0F824c42a7cC18A495cabaB
-    0xdD870fA1b7C4700F2BD7f44238821C26f7392148
+    0x617F2E2fD72FD9D5503197092aC168c91465E7f2
 */
 
 //--------------------------- settings---------------------------
@@ -146,7 +146,7 @@ contract medical{
         patient[_addressPatient].id = clientNo;
 
         //assigns the mapping variables;
-        patient[_addressPatient].eligible = true;
+        patient[_addressPatient].eligible = false;
         patient[_addressPatient].stage_acc = uint8(stageAcc); //0
         patient[_addressPatient].stage_service = uint8(stageService); //0
 
@@ -155,8 +155,8 @@ contract medical{
 
     }
 
-    function check_patient_info(address _addressPatient) accessedOnly public
-            returns(string memory,uint8,bool,uint8,uint8){
+    //Active the account for a particular patient after 
+    function acc_activate(address _addressPatient) accessedOnly public{
 
         //Activate the account after activation time of 1 min
         if (block.timestamp > (startTime+ 1 minutes)) {
@@ -166,6 +166,10 @@ contract medical{
             //Enable the requesting of service function
             patient[_addressPatient].eligible = true; 
         }
+    }
+
+    function check_patient_info(address _addressPatient) accessedOnly view public
+            returns(string memory,uint8,bool,uint8,uint8){
 
         return (patient[_addressPatient].name,
                 patient[_addressPatient].id,
@@ -176,11 +180,11 @@ contract medical{
     }
 
     //validStage(StageAcc.Acc_Activated)
-    function set_my_name(string memory _name) validAcc public {
+    function set_my_name(string memory _name) public {
         patient[msg.sender].name = _name;
     }
 
-    function set_my_id(uint8 _id) validAcc public {
+    function set_my_id(uint8 _id) public {
         patient[msg.sender].id = _id;
     }
 
@@ -199,7 +203,6 @@ contract medical{
         return registered_patient;
     }
 
-///*
     function set_num_service(uint _numService) accessedOnly public {
         //initialize the serviceCount array with _numService no. of Service structs
         //each with a service_Count of 0
@@ -207,7 +210,6 @@ contract medical{
             serviceCount.push(Service(0));
         }
     }
-//*/
 
     //requesting for services (e.g. A&E/Radiologu/Pharmacy/Cardiology)
     function request_service(uint toService) validAcc public{
