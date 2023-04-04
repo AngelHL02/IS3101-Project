@@ -28,17 +28,21 @@ contract medical{
         uint8 stage_service; //from enum Stage
     }
 
-    address[] registerList;
+    struct Service{
+        uint8 _Count;
+    }
+
+    Service[] serviceCount; //Keep track of the no. of service requested
+    address[] registerList; //Used to store the address of registered clients
 
     address public admin;
-    //address payable public patient_addr;
     address payable public hospital;
 
-    //mapping (address => uint) public balances; //Keep check of user's balance
     mapping (address => Patient) patient; 
 
     uint public startTime;
     
+    //enum used to keep track of stages
     enum StageAcc {Init, Acc_Activated}
     enum StageServiceRequest {Init,Requested,Pending,Confirmed,Reject}
 
@@ -55,6 +59,7 @@ contract medical{
         startTime = block.timestamp; //Start time of the whole process
     }
 */
+
     constructor(address payable _hospital){
         admin = msg.sender;
         //patient_addr = _patient;
@@ -75,7 +80,6 @@ contract medical{
         _;
     }
 
-    //Might be deleted later
     modifier patientOnly(){
 
         bool isPatient = false;
@@ -94,12 +98,14 @@ contract medical{
     }
 
     modifier validAcc(){
-        require(stageAcc == StageAcc.Acc_Activated);
+        //require(stageAcc == StageAcc.Acc_Activated);
+        require(patient[msg.sender].stage_acc==1,"Account not yet activated.");
         _;
     }
 
     modifier validStage(StageServiceRequest reqStage){
-        require(stageService==reqStage,"Not in the specified stage.");
+        require(patient[msg.sender].stage_service==uint8(reqStage),
+                "Not in the specified stage.");
         _;
     }
 
@@ -151,12 +157,14 @@ contract medical{
 
     function check_patient_info(address _addressPatient) accessedOnly public
             returns(string memory,uint8,bool,uint8,uint8){
-        
+
         //Activate the account after activation time of 1 min
         if (block.timestamp > (startTime+ 1 minutes)) {
             stageAcc = StageAcc.Acc_Activated;
             //Update the status of the respective account
             patient[_addressPatient].stage_acc = uint8(stageAcc); //1
+            //Enable the requesting of service function
+            patient[_addressPatient].eligible = true; 
         }
 
         return (patient[_addressPatient].name,
@@ -168,12 +176,12 @@ contract medical{
     }
 
     //validStage(StageAcc.Acc_Activated)
-    function set_name(address _address,string memory _name) validAcc public {
-        patient[_address].name = _name;
+    function set_my_name(string memory _name) validAcc public {
+        patient[msg.sender].name = _name;
     }
 
-    function set_id(address _address,uint8 _id) validAcc public {
-        patient[_address].id = _id;
+    function set_my_id(uint8 _id) validAcc public {
+        patient[msg.sender].id = _id;
     }
 
     function return_registeredList() adminOnly public view returns (address[] memory) {
@@ -191,18 +199,38 @@ contract medical{
         return registered_patient;
     }
 
-    //requesting for services (e.g. AME/
-    function request(uint) validAcc public{
+///*
+    function set_num_service(uint _numService) accessedOnly public {
+        //initialize the serviceCount array with _numService no. of Service structs
+        //each with a service_Count of 0
+        for (uint8 i=0; i<_numService;i++){
+            serviceCount.push(Service(0));
+        }
+    }
+//*/
 
+    //requesting for services (e.g. A&E/Radiologu/Pharmacy/Cardiology)
+    function request_service(uint toService) validAcc public{
+        require(toService<=serviceCount.length,"Service unavailable.");
+
+        toService --; // toService is 1-based, while Solidity is 0-based
+        serviceCount[toService]._Count += 1;
+
+        stageService = StageServiceRequest.Requested;
+        patient[msg.sender].eligible = false; 
+        //A patient can only request a single service at a time
     }
 
-    //Solidity: Is there a way to get the timestamp of a transaction that executed?
-    //Ref: https://ethereum.stackexchange.com/questions/9858/solidity-is-there-a-way-to-get-the-timestamp-of-a-transaction-that-executed
+    //return the array containing the cumulative service count
+    function check_queue() accessedOnly public view returns(Service[] memory){
+        return serviceCount;
+    }
 
     //allows light clients to react on changes efficiently
     event Sent(address from, address to, uint amount);
 
-    function make_payment(address receiver, uint8 amount) public{
+    function make_payment(address payable receiver, uint8 amount) patientOnly public{
+        receiver.transfer(amount);
         emit Sent(msg.sender,receiver,amount);
     }
 
