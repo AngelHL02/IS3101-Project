@@ -178,7 +178,7 @@ contract medical{
                 patient[_addressPatient].stage_service);
                 
     }
-
+    
     //validStage(StageAcc.Acc_Activated)
     function set_my_name(string memory _name) public {
         patient[msg.sender].name = _name;
@@ -231,7 +231,7 @@ contract medical{
     //allows light clients to react on changes efficiently
     event Sent(address from, address to, uint amount);
 
-    function make_payment(address payable receiver, uint8 amount) patientOnly public{
+    function make_payment(address payable receiver, uint8 amount) payable public{
         receiver.transfer(amount);
         emit Sent(msg.sender,receiver,amount);
     }
