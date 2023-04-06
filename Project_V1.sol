@@ -16,7 +16,7 @@ contract medical{
     0x617F2E2fD72FD9D5503197092aC168c91465E7f2
 */
 
-//--------------------------- settings---------------------------
+//--------------------------- Settings---------------------------
 
     //Class: patient
     struct Patient{
@@ -24,6 +24,7 @@ contract medical{
         uint8 id;
         //uint acc_activateTime; 
         bool eligible; //default is false
+        uint8 service_requested;
         uint8 stage_acc; //from enum StageAcc
         uint8 stage_service; //from enum Stage
     }
@@ -33,7 +34,7 @@ contract medical{
     }
 
     Service[] serviceCount; //Keep track of the no. of service requested
-    address[] registerList; //Used to store the address of registered clients
+    address[] clientList; //Used to store the address of registered clients
 
     address public admin;
     address payable public hospital;
@@ -44,11 +45,13 @@ contract medical{
     
     //enum used to keep track of stages
     enum StageAcc {Init, Acc_Activated}
-    enum StageServiceRequest {Init,Requested,Pending,Confirmed,Reject}
+    enum StageServiceRequest {Init,Requested,Cancel,Confirmed,Done,Rejected}
 
+/*  Delete later
     //initialize the initial status of stages
-    StageAcc public stageAcc = StageAcc.Init; //0
-    StageServiceRequest public stageService = StageServiceRequest.Init; //0
+    //StageAcc stageAcc = StageAcc.Init; //0
+    //StageServiceRequest stageService = StageServiceRequest.Init; //0
+*/
 
 /*  Old constructor
     constructor(address payable _patient, address payable _hospital){
@@ -62,7 +65,6 @@ contract medical{
 
     constructor(address payable _hospital){
         admin = msg.sender;
-        //patient_addr = _patient;
         hospital = _hospital; //Record the hospital's address
 
         startTime = block.timestamp; //Start time of the whole process
@@ -80,14 +82,15 @@ contract medical{
         _;
     }
 
+/*  May be deleted later
     modifier patientOnly(){
 
         bool isPatient = false;
 
-        //loop through the array named registerList
+        //loop through the array named clientList
         //to check that whether the address in a patient
-        for (uint8 i=0;i<registerList.length;i++){
-            if (msg.sender == registerList[i]){
+        for (uint8 i=0;i<clientList.length;i++){
+            if (msg.sender == clientList[i]){
                 isPatient = true;
                 break;
             }
@@ -96,7 +99,7 @@ contract medical{
         require(isPatient, "Only patient can set his/her info.");
         _;
     }
-
+*/
     modifier validAcc(){
         //require(stageAcc == StageAcc.Acc_Activated);
         require(patient[msg.sender].stage_acc==1,"Account not yet activated.");
@@ -117,10 +120,10 @@ contract medical{
 
     function check_addr_type(address _address) public view returns(string memory){
         
-        //loop through the array named registerList
+        //loop through the array named clientList
         //to check that whether the address in a patient
-        for (uint8 i=0;i<registerList.length;i++){
-            if (_address == registerList[i])
+        for (uint8 i=0;i<clientList.length;i++){
+            if (_address == clientList[i])
             return "Patient";
         }
 
@@ -134,7 +137,8 @@ contract medical{
         }
     }
 
-    function register(address _addressPatient) adminOnly public {
+    //---------------------------Client Management---------------------------
+    function register_client(address _addressPatient) adminOnly public {
         require(_addressPatient != admin|| _addressPatient != hospital,
                 "Can't register a(n) admin/hospital!");
         
@@ -147,62 +151,65 @@ contract medical{
 
         //assigns the mapping variables;
         patient[_addressPatient].eligible = false;
-        patient[_addressPatient].stage_acc = uint8(stageAcc); //0
-        patient[_addressPatient].stage_service = uint8(stageService); //0
+        patient[_addressPatient].service_requested = 0;
+        patient[_addressPatient].stage_acc = uint8(StageAcc.Init); //0
+        patient[_addressPatient].stage_service = uint8(StageServiceRequest.Init); //0
 
         //Append address to the dynamic array
-        registerList.push(_addressPatient);
+        clientList.push(_addressPatient);
 
     }
 
     //Active the account for a particular patient after 
-    function acc_activate(address _addressPatient) accessedOnly public{
+    function acc_activate(address _addressPatient) accessedOnly public returns(string memory){
 
         //Activate the account after activation time of 1 min
         if (block.timestamp > (startTime+ 1 minutes)) {
-            stageAcc = StageAcc.Acc_Activated;
+            //stageAcc = StageAcc.Acc_Activated;
+
             //Update the status of the respective account
-            patient[_addressPatient].stage_acc = uint8(stageAcc); //1
+            patient[_addressPatient].stage_acc = uint8(StageAcc.Acc_Activated); //1
             //Enable the requesting of service function
             patient[_addressPatient].eligible = true; 
+            return "Account activated.";
+        } else {
+            return "Account not yet activated.";
         }
     }
 
     function check_patient_info(address _addressPatient) accessedOnly view public
-            returns(string memory,uint8,bool,uint8,uint8){
+            returns(string memory,uint8,bool,uint8,uint8,uint8){
 
         return (patient[_addressPatient].name,
                 patient[_addressPatient].id,
                 patient[_addressPatient].eligible,
+                patient[_addressPatient].service_requested,
                 patient[_addressPatient].stage_acc,
                 patient[_addressPatient].stage_service);
                 
     }
     
-    //validStage(StageAcc.Acc_Activated)
-    function set_my_name(string memory _name) public {
+    function set_name(string memory _name) public {
         patient[msg.sender].name = _name;
     }
 
-    function set_my_id(uint8 _id) public {
+    function set_id(uint8 _id) public {
         patient[msg.sender].id = _id;
     }
 
-    function return_registeredList() adminOnly public view returns (address[] memory) {
+    function client_List() adminOnly public view returns (address[] memory) {
         // Create a dynamic array to store the registered voters
-        address[] memory registered_patient = new address[](registerList.length);
+        address[] memory registered_patient = new address[](clientList.length);
 
         // Iterate through the array of registered clients and add each one to the array
-        for (uint i = 0; i < registerList.length; i++) {
-            address _patient_addr = registerList[i];
-            //if (patient[_patient_addr].name != " ") {
-                //registered_patient[i] = registerList[i];
+        for (uint i = 0; i < clientList.length; i++) {
+            address _patient_addr = clientList[i];
                 registered_patient[i] = _patient_addr;
-            //}
         }
         return registered_patient;
     }
 
+    //---------------------------For service request---------------------------
     function set_num_service(uint _numService) accessedOnly public {
         //initialize the serviceCount array with _numService no. of Service structs
         //each with a service_Count of 0
@@ -212,15 +219,79 @@ contract medical{
     }
 
     //requesting for services (e.g. A&E/Radiologu/Pharmacy/Cardiology)
-    function request_service(uint toService) validAcc public{
+    function request_service(uint8 toService) validAcc public{
         require(toService<=serviceCount.length,"Service unavailable.");
+        require(patient[msg.sender].eligible=true,"You can only register for 1 service at a time.");
+        
+        //record which service that the client has requested
+        patient[msg.sender].service_requested = toService;
 
         toService --; // toService is 1-based, while Solidity is 0-based
         serviceCount[toService]._Count += 1;
 
-        stageService = StageServiceRequest.Requested;
         patient[msg.sender].eligible = false; 
+        patient[msg.sender].stage_service = uint8(StageServiceRequest.Requested); //1
         //A patient can only request a single service at a time
+    }
+
+    function cancel_request() validAcc public{
+
+        patient[msg.sender].stage_service = uint8(StageServiceRequest.Cancel); //2
+
+        //transform patient[_addressPatient].service_requested back to 0-based
+        uint8 toService = patient[msg.sender].service_requested - 1;
+        //remove his/her queue in the array
+        serviceCount[toService]._Count -= 1;
+
+        //restore the request service limit
+        patient[msg.sender].eligible = true; 
+        //reset the value of requested service
+        patient[msg.sender].service_requested = 0;
+
+    }
+
+    function confirm_request(address _addressPatient) accessedOnly public{
+
+        patient[_addressPatient].stage_service = uint8(StageServiceRequest.Confirmed); //3
+
+        //transform patient[_addressPatient].service_requested back to 0-based
+        uint8 toService = patient[_addressPatient].service_requested - 1 ; 
+        //remove his/her queue in the array
+        serviceCount[toService]._Count -= 1;
+
+        //restore the request service limit
+        patient[_addressPatient].eligible = true; 
+        //reset the value of requested service
+        patient[_addressPatient].service_requested = 0;
+
+    }
+
+    function make_payment(address payable receiver, uint8 amount) validAcc payable public{
+        patient[msg.sender].stage_service = uint8(StageServiceRequest.Done); //4
+
+        //restore the request service limit
+        patient[msg.sender].eligible = true; 
+        //reset the value of requested service
+        patient[msg.sender].service_requested = 0;
+
+        receiver.transfer(amount);
+        emit Sent(msg.sender,receiver,amount);
+
+    }
+
+    function reject_request(address _addressPatient) accessedOnly public{
+        patient[_addressPatient].stage_service = uint8(StageServiceRequest.Rejected); //5
+
+        //transform patient[_addressPatient].service_requested back to 0-based
+        uint8 toService = patient[_addressPatient].service_requested - 1 ; 
+        //remove his/her queue in the array
+        serviceCount[toService]._Count -= 1;
+
+        //restore the request service limit
+        patient[_addressPatient].eligible = true; 
+        //reset the value of requested service
+        patient[_addressPatient].service_requested = 0;
+
     }
 
     //return the array containing the cumulative service count
@@ -231,12 +302,10 @@ contract medical{
     //allows light clients to react on changes efficiently
     event Sent(address from, address to, uint amount);
 
-    function make_payment(address payable receiver, uint8 amount) payable public{
-        receiver.transfer(amount);
-        emit Sent(msg.sender,receiver,amount);
-    }
+    //---------------------------For signature verification---------------------------
+    address[] certifiedList; //Use to store 
 
-    //verifies the signature
+    //verifies the signature with the ECDSA.sol library
     using ECDSA for bytes32;
 
     // Recover the signer's address from the hash and signature
@@ -282,6 +351,7 @@ contract medical{
     //to inctrement the ClientID, from Client0 --> Client1 --> Client2 etc
     function generate_ClientID() internal{
         clientNo ++; //increment by 1
+        //update new userID
         userID = string(abi.encodePacked("Client", uint2str(clientNo)));
     }
 
