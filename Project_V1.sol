@@ -16,7 +16,7 @@ contract medical{
     0x617F2E2fD72FD9D5503197092aC168c91465E7f2
 */
 
-//--------------------------- Settings---------------------------
+    //--------------------------- Settings---------------------------
 
     //Class: patient
     struct Patient{
@@ -47,22 +47,6 @@ contract medical{
     enum StageAcc {Init, Acc_Activated}
     enum StageServiceRequest {Init,Requested,Cancel,Confirmed,Done,Rejected}
 
-/*  Delete later
-    //initialize the initial status of stages
-    //StageAcc stageAcc = StageAcc.Init; //0
-    //StageServiceRequest stageService = StageServiceRequest.Init; //0
-*/
-
-/*  Old constructor
-    constructor(address payable _patient, address payable _hospital){
-        admin = msg.sender;
-        patient_addr = _patient;
-        hospital = _hospital; //Record the hospital's address
-
-        startTime = block.timestamp; //Start time of the whole process
-    }
-*/
-
     constructor(address payable _hospital){
         admin = msg.sender;
         hospital = _hospital; //Record the hospital's address
@@ -70,7 +54,7 @@ contract medical{
         startTime = block.timestamp; //Start time of the whole process
     }
 
-//---------------------------modifiers---------------------------
+    //---------------------------modifiers---------------------------
     modifier adminOnly(){
         require(msg.sender == admin,"Only accessible by admin staff!");
         _;
@@ -100,19 +84,19 @@ contract medical{
         _;
     }
 */
+
     modifier validAcc(){
-        //require(stageAcc == StageAcc.Acc_Activated);
         require(patient[msg.sender].stage_acc==1,"Account not yet activated.");
         _;
     }
 
-    modifier validStage(StageServiceRequest reqStage){
+    modifier inState(StageServiceRequest reqStage){
         require(patient[msg.sender].stage_service==uint8(reqStage),
                 "Not in the specified stage.");
         _;
     }
 
-//---------------------------------------------------------------
+    //----------------------------------------------------------------
 
     function timeNow() public view returns(uint){
         return block.timestamp;
@@ -189,11 +173,11 @@ contract medical{
                 
     }
     
-    function set_name(string memory _name) public {
+    function set_name(string memory _name) validAcc public {
         patient[msg.sender].name = _name;
     }
 
-    function set_id(uint8 _id) public {
+    function set_id(uint8 _id) validAcc public {
         patient[msg.sender].id = _id;
     }
 
@@ -234,7 +218,7 @@ contract medical{
         //A patient can only request a single service at a time
     }
 
-    function cancel_request() validAcc public{
+    function cancel_request() validAcc inState(StageServiceRequest.Requested) public{
 
         patient[msg.sender].stage_service = uint8(StageServiceRequest.Cancel); //2
 
@@ -243,10 +227,13 @@ contract medical{
         //remove his/her queue in the array
         serviceCount[toService]._Count -= 1;
 
+        //---Delete later (Replaced with calling function)
         //restore the request service limit
-        patient[msg.sender].eligible = true; 
+        //patient[msg.sender].eligible = true; 
         //reset the value of requested service
-        patient[msg.sender].service_requested = 0;
+        //patient[msg.sender].service_requested = 0;
+
+        reset_service_status(msg.sender);
 
     }
 
@@ -259,27 +246,54 @@ contract medical{
         //remove his/her queue in the array
         serviceCount[toService]._Count -= 1;
 
+        //---Delete later (Replaced with calling function)
         //restore the request service limit
-        patient[_addressPatient].eligible = true; 
+        //patient[_addressPatient].eligible = true; 
         //reset the value of requested service
-        patient[_addressPatient].service_requested = 0;
+        //patient[_addressPatient].service_requested = 0;
+
+        reset_service_status(_addressPatient);
 
     }
 
-    function make_payment(address payable receiver, uint8 amount) validAcc payable public{
+    function make_payment(address payable receiver, uint8 amount) validAcc inState(StageServiceRequest.Confirmed) 
+            payable public{
         patient[msg.sender].stage_service = uint8(StageServiceRequest.Done); //4
 
+        //---Delete later (Replaced with calling function)
         //restore the request service limit
-        patient[msg.sender].eligible = true; 
+        //patient[msg.sender].eligible = true; 
         //reset the value of requested service
-        patient[msg.sender].service_requested = 0;
+        //patient[msg.sender].service_requested = 0;
+
+        reset_service_status(msg.sender);
 
         receiver.transfer(amount);
         emit Sent(msg.sender,receiver,amount);
 
     }
 
-    function reject_request(address _addressPatient) accessedOnly public{
+    function done(address _addressPatient) accessedOnly inState(StageServiceRequest.Requested) public{
+
+        patient[_addressPatient].stage_service = uint8(StageServiceRequest.Done); //4
+
+        //transform patient[_addressPatient].service_requested back to 0-based
+        uint8 toService = patient[_addressPatient].service_requested - 1 ; 
+        //remove his/her queue in the array
+        serviceCount[toService]._Count -= 1;
+
+        //---Delete later (Replaced with calling function)
+        //restore the request service limit
+        //patient[_addressPatient].eligible = true; 
+        //reset the value of requested service
+        //patient[_addressPatient].service_requested = 0;
+
+        reset_service_status(_addressPatient);
+
+    }
+
+    function reject_request(address _addressPatient) accessedOnly 
+            inState(StageServiceRequest.Requested) public{
         patient[_addressPatient].stage_service = uint8(StageServiceRequest.Rejected); //5
 
         //transform patient[_addressPatient].service_requested back to 0-based
@@ -287,10 +301,13 @@ contract medical{
         //remove his/her queue in the array
         serviceCount[toService]._Count -= 1;
 
+        //---Delete later (Replaced with calling function)
         //restore the request service limit
-        patient[_addressPatient].eligible = true; 
+        //patient[_addressPatient].eligible = true; 
         //reset the value of requested service
-        patient[_addressPatient].service_requested = 0;
+        //patient[_addressPatient].service_requested = 0;
+
+        reset_service_status(_addressPatient);
 
     }
 
@@ -353,6 +370,16 @@ contract medical{
         clientNo ++; //increment by 1
         //update new userID
         userID = string(abi.encodePacked("Client", uint2str(clientNo)));
+    }
+
+    //this function resets the status related to service request
+    function reset_service_status(address _addressPatient) internal{
+
+        //restore the request service limit
+        patient[_addressPatient].eligible = true; 
+        //reset the value of requested service
+        patient[_addressPatient].service_requested = 0;
+
     }
 
 }
