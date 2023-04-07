@@ -21,7 +21,7 @@ contract medical{
     //Class: patient
     struct Patient{
         string name;
-        uint8 id;
+        uint id;
         //uint acc_activateTime; 
         bool eligible; //default is false
         uint8 service_requested;
@@ -52,6 +52,10 @@ contract medical{
         hospital = _hospital; //Record the hospital's address
 
         startTime = block.timestamp; //Start time of the whole process
+
+        //Add the addresses to the certifiedList
+        certifiedList.push(msg.sender);
+        certifiedList.push(_hospital);
     }
 
     //---------------------------modifiers---------------------------
@@ -123,7 +127,7 @@ contract medical{
 
     //---------------------------Client Management---------------------------
     function register_client(address _addressPatient) adminOnly public {
-        require(_addressPatient != admin|| _addressPatient != hospital,
+        require(_addressPatient != admin && _addressPatient != hospital,
                 "Can't register a(n) admin/hospital!");
         
         //Call the internal function generate_Client()
@@ -162,7 +166,7 @@ contract medical{
     }
 
     function check_patient_info(address _addressPatient) accessedOnly view public
-            returns(string memory,uint8,bool,uint8,uint8,uint8){
+            returns(string memory,uint,bool,uint8,uint8,uint8){
 
         return (patient[_addressPatient].name,
                 patient[_addressPatient].id,
@@ -177,7 +181,7 @@ contract medical{
         patient[msg.sender].name = _name;
     }
 
-    function set_id(uint8 _id) validAcc public {
+    function set_id(uint _id) validAcc public {
         patient[msg.sender].id = _id;
     }
 
@@ -273,7 +277,7 @@ contract medical{
 
     }
 
-    function done(address _addressPatient) accessedOnly inState(StageServiceRequest.Requested) public{
+    function done(address _addressPatient) accessedOnly public{
 
         patient[_addressPatient].stage_service = uint8(StageServiceRequest.Done); //4
 
@@ -292,8 +296,7 @@ contract medical{
 
     }
 
-    function reject_request(address _addressPatient) accessedOnly 
-            inState(StageServiceRequest.Requested) public{
+    function reject_request(address _addressPatient) accessedOnly public{
         patient[_addressPatient].stage_service = uint8(StageServiceRequest.Rejected); //5
 
         //transform patient[_addressPatient].service_requested back to 0-based
@@ -325,6 +328,34 @@ contract medical{
     //verifies the signature with the ECDSA.sol library
     using ECDSA for bytes32;
 
+    function add_Certified(address _address) public {
+        certifiedList.push(_address);
+    }
+
+    function getCertifiedList() public view returns (address[] memory) {
+        return certifiedList;
+    }
+
+    // Recover the signer's address from the hash and signature
+    // then compare it one by one in the address in the certifiedList
+    // to check its authenticity
+    function verifySign(bytes32 hash, bytes memory signature) 
+            public view returns (bool, address) {
+        // Recover the signer's address from the hash and signature
+        address signer = hash.recover(signature);
+
+        // Check if the recovered signer is in the expected signers list
+        for (uint i = 0; i < certifiedList.length; i++) {
+            if (signer == certifiedList[i]) {
+                return (true, signer);
+            }
+        }
+
+        // Signature is invalid if the recovered signer is not in the expected signers list
+        return (false, address(0));
+    }
+
+/*  Old version
     // Recover the signer's address from the hash and signature
     function verifySignature(bytes32 hash, bytes memory signature, address expectedSigner) 
         public pure returns (bool,address) { 
@@ -334,6 +365,7 @@ contract medical{
         return (signer == expectedSigner,signer); 
 
     } 
+*/
 
     //---------------------------All internal function---------------------------
     function uint2str(uint256 _i) internal pure returns (string memory) {
