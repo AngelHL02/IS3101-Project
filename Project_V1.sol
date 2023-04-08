@@ -55,7 +55,10 @@ contract medical{
 
         //Add the addresses to the certifiedList
         certifiedList.push(msg.sender);
-        certifiedList.push(_hospital);
+
+        //prevent adding of address to the CertifiedList array
+        //in the case that the admin = hospital
+        if (msg.sender != _hospital) certifiedList.push(_hospital);
     }
 
     //---------------------------modifiers---------------------------

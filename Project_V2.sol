@@ -43,6 +43,9 @@ contract medical_V2{
 
     uint public startTime;
     
+    //check whether the _addressPatient has applied for an account already
+    bool isPatient = false;
+
     //enum used to keep track of stages
     enum StageAcc {Init, Acc_Activated}
     enum StageServiceRequest {Init,Requested,Cancel,Confirmed,Done,Rejected}
@@ -61,7 +64,10 @@ contract medical_V2{
 
         //Add the addresses to the certifiedList
         certifiedList.push(msg.sender);
-        certifiedList.push(_hospital);
+
+        //prevent adding of address to the CertifiedList array
+        //in the case that the admin = hospital
+        if (msg.sender != _hospital) certifiedList.push(_hospital);
 
     }
 
@@ -138,19 +144,12 @@ contract medical_V2{
     //Active the account for a particular patient after 
     function acc_activate(address _addressPatient) adminOnly public returns(string memory){
 
-        //check whether the _addressPatient has applied for an account
-        bool isPatient = false;
+        //check whether the inputted address is in the registered_patient array
+        isExistingPatient(_addressPatient);
+        require(isPatient, "Patient not found.");
 
-        //loop through the array named clientList
-        //to check that whether the address in a patient
-        for (uint8 i=0;i<clientList.length;i++){
-            if (_addressPatient == clientList[i]){
-                isPatient = true;
-                break;
-            }
-        }
-
-        require(isPatient, "User not found.");
+        //reset the bool
+        isPatient = false;
 
         //Activate the account after activation time of 1 min
         if (block.timestamp > (startTime+ 1 minutes)) {
@@ -167,15 +166,22 @@ contract medical_V2{
     }
 
     function check_patient_info(address _addressPatient) accessedOnly view public
-            returns(string memory,uint,bool,uint8,uint8,uint8){
+            returns(string memory, uint, bool, uint8, uint8, uint8){
+        
+        //if the address is in the clientList
+        for (uint8 i=0; i<clientList.length; i++){
+            if (_addressPatient == clientList[i]){
+                return (patient[_addressPatient].name,
+                        patient[_addressPatient].id,
+                        patient[_addressPatient].eligible,
+                        patient[_addressPatient].service_requested,
+                        patient[_addressPatient].stage_acc,
+                        patient[_addressPatient].stage_service);
+            }
+        }
 
-        return (patient[_addressPatient].name,
-                patient[_addressPatient].id,
-                patient[_addressPatient].eligible,
-                patient[_addressPatient].service_requested,
-                patient[_addressPatient].stage_acc,
-                patient[_addressPatient].stage_service);
-                
+        // If the function reaches this point, the patient was not found in the clientList array.
+        revert("Patient not found.");
     }
     
     function set_name(string memory _name) validAcc public {
@@ -394,6 +400,18 @@ contract medical_V2{
         //reset the value of requested service
         patient[_addressPatient].service_requested = 0;
 
+    }
+
+    //check whether it is a registered address
+    function isExistingPatient(address _address) internal{
+        //loop through the array named clientList
+        //to check that whether the address in a patient
+        for (uint8 i=0;i<clientList.length;i++){
+            if (_address == clientList[i]){
+                isPatient = true;
+                break;
+            }
+        }
     }
 
 }
