@@ -345,6 +345,7 @@ contract medical_V2{
         }
 
         // Signature is invalid if the recovered signer is not in the expected signers list
+        // address(0) will return an address of: 0x0000000000000000000000000000000000000000
         return (false, address(0));
     }
 

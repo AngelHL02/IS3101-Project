@@ -1,0 +1,13 @@
+V1
+constructor --> 1 hospital address 
+
+For Acc registration:
+Admin register clients (i.e. patient)
+
+V2
+constructor --> 1 hospital address + #service
+
+No. of service is set at the initialization stage.
+
+For Acc registration:
+User request for Acc --> Admin approve
