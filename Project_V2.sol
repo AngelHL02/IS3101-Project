@@ -321,7 +321,7 @@ contract medical_V2{
     //verifies the signature with the ECDSA.sol library
     using ECDSA for bytes32;
 
-    function add_Certified(address _address) public {
+    function add_Certified(address _address) adminOnly public {
         certifiedList.push(_address);
     }
 
