@@ -42,9 +42,6 @@ contract medical_V2{
     mapping (address => Patient) patient; 
 
     uint public startTime;
-    
-    //check whether the _addressPatient has applied for an account already
-    bool isPatient = false;
 
     //enum used to keep track of stages
     enum StageAcc {Init, Acc_Activated}
@@ -324,16 +321,27 @@ contract medical_V2{
     //---------------------------For signature verification---------------------------
     address[] certifiedList; //Use to store adresses of certified parties
 
-    //verifies the signature with the ECDSA.sol library
-    using ECDSA for bytes32;
+    bool isMatch; //default = false
 
     function add_Certified(address _address) adminOnly public {
+        for (uint8 i=0;i<certifiedList.length;i++){
+            if(_address==certifiedList[i]){
+                isMatch = true;
+            }
+        }
+        
+        require(!isMatch,"Address already certified.");
+
         certifiedList.push(_address);
+        isMatch = false; //reset isMatch
     }
 
     function getCertifiedList() public view returns (address[] memory) {
         return certifiedList;
     }
+
+    //verifies the signature with the ECDSA.sol library
+    using ECDSA for bytes32;
 
     // Recover the signer's address from the hash and signature
     // then compare it one by one in the address in the certifiedList
@@ -402,7 +410,10 @@ contract medical_V2{
 
     }
 
-    //check whether it is a registered address
+    //check whether the _addressPatient has applied for an account already
+    bool isPatient;
+
+    //check whether it is a registered patient address
     function isExistingPatient(address _address) internal{
         //loop through the array named clientList
         //to check that whether the address in a patient
