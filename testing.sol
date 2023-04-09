@@ -122,9 +122,24 @@
 
     contract TestArray {
         address[] certifiedList;
+        bool isMatch; //default = false
 
+        constructor(){
+            certifiedList.push(msg.sender);
+        }
+        
         function addAddress(address _address) public {
+
+            for (uint8 i=0;i<certifiedList.length;i++){
+                if(_address==certifiedList[i]){
+                    isMatch = true;
+                }
+            }
+            
+            require(!isMatch,"Address already certified.");
+
             certifiedList.push(_address);
+            isMatch = false; //reset isMatch
         }
 
         function getCertifiedList() public view returns (address[] memory) {
@@ -133,6 +148,7 @@
 }
 
     //Combined
+    //Verifying signatures from certified users
     pragma solidity ^0.8.0;
 
     import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -141,9 +157,20 @@
         using ECDSA for bytes32;
 
         address[] certifiedList;
+        bool isMatch; //default = false
 
         function addAddress(address _address) public {
+
+            for (uint8 i=0;i<certifiedList.length;i++){
+                if(_address==certifiedList[i]){
+                    isMatch = true;
+                }
+            }
+            
+            require(!isMatch,"Address already certified.");
+            
             certifiedList.push(_address);
+            isMatch = false; //reset isMatch
         }
 
         function getCertifiedList() public view returns (address[] memory) {
