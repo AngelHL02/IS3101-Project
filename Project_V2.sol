@@ -323,17 +323,38 @@ contract medical_V2{
 
     bool isMatch; //default = false
 
+    function generate_message(address _addressPatient,string memory message)
+            accessedOnly public view returns (string memory) {
+
+        //if the address is in the clientList
+        for (uint8 i=0; i<clientList.length; i++) {
+            if (_addressPatient == clientList[i]) {
+                return string(abi.encodePacked(patient[_addressPatient].name, 
+                '-', uint2str(patient[_addressPatient].id),'-',message));
+            }
+        }
+
+        // If the function reaches this point, the patient was not found in the clientList array.
+        revert("Patient not found.");
+    }
+
+    event certifiedListUpdated();
+
     function add_Certified(address _address) adminOnly public {
+        //check whether the inputted address exists in the certifiedList already
         for (uint8 i=0;i<certifiedList.length;i++){
             if(_address==certifiedList[i]){
                 isMatch = true;
             }
         }
         
+        //!isMatch := isMatch = false
         require(!isMatch,"Address already certified.");
 
         certifiedList.push(_address);
         isMatch = false; //reset isMatch
+
+        emit certifiedListUpdated();
     }
 
     function getCertifiedList() public view returns (address[] memory) {
