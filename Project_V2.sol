@@ -22,9 +22,9 @@ contract medical_V2{
     struct Patient{
         string name;
         uint id;
-        //uint acc_activateTime; 
         bool eligible; //default is false
         uint8 service_requested;
+        uint service_fee;
         uint8 stage_acc; //from enum StageAcc
         uint8 stage_service; //from enum Stage
     }
@@ -119,6 +119,10 @@ contract medical_V2{
     //---------------------------Client Management---------------------------
     function acc_request() public {
         require(msg.sender != admin && msg.sender != hospital, "Can't register a(n) admin/hospital!");
+
+        //check whether the inputted address is in the registered_patient array
+        isExistingPatient(msg.sender);
+        require(!isPatient, "Account is already registered!");
         
         //Call the internal function generate_Client()
         generate_ClientID();
@@ -162,9 +166,9 @@ contract medical_V2{
         }
     }
 
-    function check_patient_info(address _addressPatient) accessedOnly view public
+    function check_client_info(address _addressPatient) accessedOnly view public
             returns(string memory, uint, bool, uint8, uint8, uint8){
-        
+
         //if the address is in the clientList
         for (uint8 i=0; i<clientList.length; i++){
             if (_addressPatient == clientList[i]){
@@ -204,6 +208,14 @@ contract medical_V2{
     //---------------------------For service request---------------------------
     //requesting for services (e.g. A&E/Radiologu/Pharmacy/Cardiology)
     function request_service(uint8 toService) validAcc public{
+
+        //check whether the inputted address is in the registered_patient array
+        isExistingPatient(msg.sender);
+        require(isPatient, "Only registered patient can request for a service");
+
+        //reset the bool
+        isPatient = false;
+
         require(toService<=serviceCount.length,"Service unavailable.");
         require(patient[msg.sender].eligible=true,"You can only register for 1 service at a time.");
         
@@ -237,14 +249,19 @@ contract medical_V2{
 
     }
 
-    function confirm_request(address _addressPatient) accessedOnly public{
+    //uint public service_fee;
+
+    function confirm_request(address _addressPatient, uint _amount) accessedOnly public{
 
         patient[_addressPatient].stage_service = uint8(StageServiceRequest.Confirmed); //3
+        patient[_addressPatient].service_fee = _amount;
 
         //transform patient[_addressPatient].service_requested back to 0-based
         uint8 toService = patient[_addressPatient].service_requested - 1 ; 
         //remove his/her queue in the array
         serviceCount[toService]._Count -= 1;
+
+        //service_fee = _amount;
 
         //---Delete later (Replaced with calling function)
         //restore the request service limit
@@ -256,8 +273,13 @@ contract medical_V2{
 
     }
 
-    function make_payment(address payable receiver, uint8 amount) validAcc inState(StageServiceRequest.Confirmed) 
+    function my_service_fee() validAcc inState(StageServiceRequest.Confirmed) public view returns(uint){
+        return patient[msg.sender].service_fee;
+    }
+
+    function make_payment(uint8 amount) validAcc inState(StageServiceRequest.Confirmed) 
             payable public{
+        require(msg.value == patient[msg.sender].service_fee,"Incorrect Amount.");
         patient[msg.sender].stage_service = uint8(StageServiceRequest.Done); //4
 
         //---Delete later (Replaced with calling function)
@@ -268,8 +290,12 @@ contract medical_V2{
 
         reset_service_status(msg.sender);
 
-        receiver.transfer(amount);
-        emit Sent(msg.sender,receiver,amount);
+        hospital.transfer(amount);
+
+
+        patient[msg.sender].service_fee = 0;
+
+        emit paymentSettled(msg.sender,hospital,amount);
 
     }
 
@@ -316,7 +342,7 @@ contract medical_V2{
     }
 
     //allows light clients to react on changes efficiently
-    event Sent(address from, address to, uint amount);
+    event paymentSettled(address from, address to, uint amount);
 
     //---------------------------For signature verification---------------------------
     address[] certifiedList; //Use to store adresses of certified parties
