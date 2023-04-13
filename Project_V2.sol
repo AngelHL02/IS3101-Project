@@ -249,8 +249,6 @@ contract medical_V2{
 
     }
 
-    //uint public service_fee;
-
     function confirm_request(address _addressPatient, uint _amount) accessedOnly public{
 
         patient[_addressPatient].stage_service = uint8(StageServiceRequest.Confirmed); //3
@@ -260,8 +258,6 @@ contract medical_V2{
         uint8 toService = patient[_addressPatient].service_requested - 1 ; 
         //remove his/her queue in the array
         serviceCount[toService]._Count -= 1;
-
-        //service_fee = _amount;
 
         //---Delete later (Replaced with calling function)
         //restore the request service limit
