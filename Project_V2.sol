@@ -6,16 +6,6 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract medical_V2{
 
-/*
-    For testing:
-    hospital: 0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
-
-    Others: 
-    0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
-    0x78731D3Ca6b7E34aC0F824c42a7cC18A495cabaB
-    0x617F2E2fD72FD9D5503197092aC168c91465E7f2
-*/
-
     //--------------------------- Settings---------------------------
 
     //Class: patient
@@ -80,6 +70,16 @@ contract medical_V2{
         _;
     }
 
+    modifier patientOnly(){
+        //check whether the inputted address is in the registered_patient array
+        isExistingPatient(msg.sender);
+        require(isPatient, "Registered patient only!");
+
+        //reset the bool
+        isPatient = false;
+        _;
+    }
+
     modifier validAcc(){
         require(patient[msg.sender].stage_acc==1,"Account not yet activated.");
         _;
@@ -91,7 +91,7 @@ contract medical_V2{
         _;
     }
 
-    //----------------------------------------------------------------
+    //------------------------------------------------------------------------
 
     function timeNow() public view returns(uint){
         return block.timestamp;
@@ -152,8 +152,8 @@ contract medical_V2{
         //reset the bool
         isPatient = false;
 
-        //Activate the account after activation time of 1 min
-        if (block.timestamp > (startTime+ 1 minutes)) {
+        //Activate the account after activation time of 30 sec
+        if (block.timestamp > (startTime+ 30 seconds)) {
             //stageAcc = StageAcc.Acc_Activated;
 
             //Update the status of the respective account
@@ -185,11 +185,13 @@ contract medical_V2{
         revert("Patient not found.");
     }
     
-    function set_name(string memory _name) validAcc public {
+    function set_name(string memory _name) patientOnly public {
+
         patient[msg.sender].name = _name;
     }
 
-    function set_id(uint _id) validAcc public {
+    function set_id(uint _id) patientOnly public {
+
         patient[msg.sender].id = _id;
     }
 
@@ -207,14 +209,7 @@ contract medical_V2{
 
     //---------------------------For service request---------------------------
     //requesting for services (e.g. A&E/Radiologu/Pharmacy/Cardiology)
-    function request_service(uint8 toService) validAcc public{
-
-        //check whether the inputted address is in the registered_patient array
-        isExistingPatient(msg.sender);
-        require(isPatient, "Only registered patient can request for a service");
-
-        //reset the bool
-        isPatient = false;
+    function request_service(uint8 toService) patientOnly validAcc public{
 
         require(toService<=serviceCount.length,"Service unavailable.");
         require(patient[msg.sender].eligible=true,"You can only register for 1 service at a time.");
@@ -230,7 +225,7 @@ contract medical_V2{
         //A patient can only request a single service at a time
     }
 
-    function cancel_service() validAcc inState(StageServiceRequest.Requested) public{
+    function cancel_service() patientOnly validAcc inState(StageServiceRequest.Requested) public{
 
         patient[msg.sender].stage_service = uint8(StageServiceRequest.Cancel); //2
 
@@ -238,12 +233,6 @@ contract medical_V2{
         uint8 toService = patient[msg.sender].service_requested - 1;
         //remove his/her queue in the array
         serviceCount[toService]._Count -= 1;
-
-        //---Delete later (Replaced with calling function)
-        //restore the request service limit
-        //patient[msg.sender].eligible = true; 
-        //reset the value of requested service
-        //patient[msg.sender].service_requested = 0;
 
         reset_service_status(msg.sender);
 
@@ -259,35 +248,24 @@ contract medical_V2{
         //remove his/her queue in the array
         serviceCount[toService]._Count -= 1;
 
-        //---Delete later (Replaced with calling function)
-        //restore the request service limit
-        //patient[_addressPatient].eligible = true; 
-        //reset the value of requested service
-        //patient[_addressPatient].service_requested = 0;
-
         reset_service_status(_addressPatient);
 
     }
 
-    function my_service_fee() validAcc inState(StageServiceRequest.Confirmed) public view returns(uint){
+    function my_service_fee() validAcc public view returns(uint){
+        require(msg.sender!=admin && msg.sender!=hospital,
+                "Only patient can chack his/her service fee");
         return patient[msg.sender].service_fee;
     }
 
-    function make_payment(uint8 amount) validAcc inState(StageServiceRequest.Confirmed) 
+    function make_payment(uint amount) patientOnly validAcc inState(StageServiceRequest.Confirmed) 
             payable public{
         require(msg.value == patient[msg.sender].service_fee,"Incorrect Amount.");
         patient[msg.sender].stage_service = uint8(StageServiceRequest.Done); //4
 
-        //---Delete later (Replaced with calling function)
-        //restore the request service limit
-        //patient[msg.sender].eligible = true; 
-        //reset the value of requested service
-        //patient[msg.sender].service_requested = 0;
-
         reset_service_status(msg.sender);
 
         hospital.transfer(amount);
-
 
         patient[msg.sender].service_fee = 0;
 
@@ -304,12 +282,6 @@ contract medical_V2{
         //remove his/her queue in the array
         serviceCount[toService]._Count -= 1;
 
-        //---Delete later (Replaced with calling function)
-        //restore the request service limit
-        //patient[_addressPatient].eligible = true; 
-        //reset the value of requested service
-        //patient[_addressPatient].service_requested = 0;
-
         reset_service_status(_addressPatient);
 
     }
@@ -322,18 +294,12 @@ contract medical_V2{
         //remove his/her queue in the array
         serviceCount[toService]._Count -= 1;
 
-        //---Delete later (Replaced with calling function)
-        //restore the request service limit
-        //patient[_addressPatient].eligible = true; 
-        //reset the value of requested service
-        //patient[_addressPatient].service_requested = 0;
-
         reset_service_status(_addressPatient);
 
     }
 
     //return the array containing the cumulative service count
-    function check_queue() accessedOnly public view returns(Service[] memory){
+    function check_queue() public view returns(Service[] memory){
         return serviceCount;
     }
 
@@ -345,8 +311,8 @@ contract medical_V2{
 
     bool isMatch; //default = false
 
-    function generate_message(address _addressPatient,string memory message)
-            accessedOnly public view returns (string memory) {
+    function generate_message(address _addressPatient,string memory message) 
+            public view returns (string memory) {
 
         //if the address is in the clientList
         for (uint8 i=0; i<clientList.length; i++) {
