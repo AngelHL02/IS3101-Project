@@ -152,9 +152,8 @@ contract medical_V2{
         //reset the bool
         isPatient = false;
 
-        //Activate the account after activation time of 30 sec
-        if (block.timestamp > (startTime+ 30 seconds)) {
-            //stageAcc = StageAcc.Acc_Activated;
+        //Activate the account after activation time of 1 minutes
+        if (block.timestamp > (startTime+ 1 minutes)) {
 
             //Update the status of the respective account
             patient[_addressPatient].stage_acc = uint8(StageAcc.Acc_Activated); //1
@@ -312,13 +311,15 @@ contract medical_V2{
     bool isMatch; //default = false
 
     function generate_message(address _addressPatient,string memory message) 
-            public view returns (string memory) {
+            accessedOnly public view returns (string memory) {
 
         //if the address is in the clientList
         for (uint8 i=0; i<clientList.length; i++) {
             if (_addressPatient == clientList[i]) {
                 return string(abi.encodePacked(patient[_addressPatient].name, 
-                '-', uint2str(patient[_addressPatient].id),'-',message));
+                '-', uint2str(patient[_addressPatient].id),
+                '-',uint2str(block.timestamp),
+                '-',message));
             }
         }
 
