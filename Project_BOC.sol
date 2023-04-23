@@ -2,12 +2,13 @@
 //Project_V3.sol based on Project_V2.sol
 
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.7;
 
-//import required packages
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol"; 
+    //import required packages
+    import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol"; 
+    import "solidity-datetime/DateTime.sol";
 
-contract medical_V2{
+    contract medical_V3{
 
     //--------------------------- Settings---------------------------
 
@@ -20,6 +21,14 @@ contract medical_V2{
         uint service_fee;
         uint8 stage_acc; //from enum StageAcc
         uint8 stage_service; //from enum Stage
+        string[] info;
+        uint8 signCount; //default = 0
+    }
+
+    struct SignDetails {
+        uint256 timestamp; // Timestamp of when the signature is recorded
+        bytes32 hash; // Cryptographic hash of the document's content
+        bytes signature;
     }
 
     struct Service{
@@ -33,6 +42,7 @@ contract medical_V2{
     address payable public hospital;
 
     mapping (address => Patient) public patient; 
+    mapping(address => mapping(uint => SignDetails)) public signs;
 
     uint public startTime;
 
@@ -139,6 +149,7 @@ contract medical_V2{
         patient[msg.sender].service_requested = 0;
         patient[msg.sender].stage_acc = uint8(StageAcc.Init); //0
         patient[msg.sender].stage_service = uint8(StageServiceRequest.Init); //0
+        patient[msg.sender].signCount = 0;
 
         //Append address to the dynamic array
         clientList.push(msg.sender);
@@ -168,6 +179,7 @@ contract medical_V2{
         }
     }
 
+/*
     function check_client_info(address _addressPatient) accessedOnly view public
             returns(string memory, uint, bool, uint8, uint8, uint8){
 
@@ -186,7 +198,11 @@ contract medical_V2{
         // If the function reaches this point, the patient was not found in the clientList array.
         revert("Patient not found.");
     }
-    
+*/
+
+    //Account set up
+
+/*
     function set_name(string memory _name) patientOnly public {
 
         patient[msg.sender].name = _name;
@@ -195,6 +211,21 @@ contract medical_V2{
     function set_id(uint _id) patientOnly public {
 
         patient[msg.sender].id = _id;
+    }
+
+*/
+
+    function set_self_details(string memory _name, uint _id) patientOnly validAcc public {
+        patient[msg.sender].name = _name;
+        patient[msg.sender].id = _id;        
+    }
+
+    function add_info(string[] memory _info) patientOnly public{
+        patient[msg.sender].info = _info;
+    }
+
+    function return_info(address _address) accessedOnly view public returns(string[] memory){
+        return patient[_address].info;
     }
 
     function client_List() adminOnly public view returns (address[] memory) {
@@ -330,6 +361,17 @@ contract medical_V2{
         revert("Patient not found.");
     }
 
+    function record_signs(address _address,bytes32 _hash, bytes memory _signature) 
+        accessedOnly public {
+
+        require(signs[_address][patient[_address].signCount].timestamp == 0, 
+        "Signature already recorded");  // Check if document already exists
+
+        SignDetails memory sign = SignDetails(block.timestamp,_hash, _signature);
+        signs[_address][patient[_address].signCount] = sign;
+        patient[_address].signCount ++ ;
+    }
+
     event certifiedListUpdated();
 
     function add_Certified(address _address) adminOnly public {
@@ -374,6 +416,16 @@ contract medical_V2{
         // Signature is invalid if the recovered signer is not in the expected signers list
         // address(0) will return an address of: 0x0000000000000000000000000000000000000000
         return (false, address(0));
+    }
+
+        //Using the DateTime library for date conversion
+    using DateTime for uint256;
+
+    function timestampToDateTime(uint256 timestamp) public pure
+        returns (uint256 year, uint256 month, uint256 day, 
+                uint256 hour, uint256 minute, uint256 second)
+    {
+        (year, month, day, hour, minute, second) = DateTime.timestampToDateTime(timestamp);
     }
 
     //---------------------------All internal function---------------------------
