@@ -12,7 +12,6 @@ pragma solidity ^0.8.7;
 
     //--------------------------- Settings---------------------------
 
-    //Class: patient
     struct Patient{
         string name;
         uint id;
@@ -130,7 +129,7 @@ pragma solidity ^0.8.7;
     }
 
     //---------------------------Client Management---------------------------
-    function acc_request() public {
+    function acc_request() external {
         require(msg.sender != admin && msg.sender != hospital, "Can't register a(n) admin/hospital!");
 
         //check whether the inputted address is in the registered_patient array
@@ -201,7 +200,6 @@ pragma solidity ^0.8.7;
 */
 
     //Account set up
-
 /*
     function set_name(string memory _name) patientOnly public {
 
@@ -291,6 +289,9 @@ pragma solidity ^0.8.7;
         return patient[msg.sender].service_fee;
     }
 
+    //allows light clients to react on changes efficiently
+    event paymentSettled(address from, address to, uint amount);
+
     function make_payment(uint amount) patientOnly validAcc inState(StageServiceRequest.Confirmed) 
             payable public{
         require(msg.value == patient[msg.sender].service_fee,"Incorrect Amount.");
@@ -335,9 +336,6 @@ pragma solidity ^0.8.7;
     function check_queue() public view returns(Service[] memory){
         return serviceCount;
     }
-
-    //allows light clients to react on changes efficiently
-    event paymentSettled(address from, address to, uint amount);
 
     //---------------------------For signature verification---------------------------
     address[] certifiedList; //Use to store adresses of certified parties
