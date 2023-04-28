@@ -82,6 +82,7 @@ pragma solidity ^0.8.7;
         _;
     }
 
+    //Only Patient can access this function
     modifier patientOnly(){
         //check whether the inputted address is in the registered_patient array
         isExistingPatient(msg.sender);
@@ -178,41 +179,6 @@ pragma solidity ^0.8.7;
         }
     }
 
-/*
-    function check_client_info(address _addressPatient) accessedOnly view public
-            returns(string memory, uint, bool, uint8, uint8, uint8){
-
-        //if the address is in the clientList
-        for (uint8 i=0; i<clientList.length; i++){
-            if (_addressPatient == clientList[i]){
-                return (patient[_addressPatient].name,
-                        patient[_addressPatient].id,
-                        patient[_addressPatient].eligible,
-                        patient[_addressPatient].service_requested,
-                        patient[_addressPatient].stage_acc,
-                        patient[_addressPatient].stage_service);
-            }
-        }
-
-        // If the function reaches this point, the patient was not found in the clientList array.
-        revert("Patient not found.");
-    }
-*/
-
-    //Account set up
-/*
-    function set_name(string memory _name) patientOnly public {
-
-        patient[msg.sender].name = _name;
-    }
-
-    function set_id(uint _id) patientOnly public {
-
-        patient[msg.sender].id = _id;
-    }
-
-*/
-
     function set_self_details(string memory _name, uint _id) patientOnly validAcc public {
         patient[msg.sender].name = _name;
         patient[msg.sender].id = _id;        
@@ -272,7 +238,7 @@ pragma solidity ^0.8.7;
     function confirm_request(address _addressPatient, uint _amount) accessedOnly public{
 
         patient[_addressPatient].stage_service = uint8(StageServiceRequest.Confirmed); //3
-        patient[_addressPatient].service_fee = _amount;
+        patient[_addressPatient].service_fee = _amount*(1 ether);
 
         //transform patient[_addressPatient].service_requested back to 0-based
         uint8 toService = patient[_addressPatient].service_requested - 1 ; 
