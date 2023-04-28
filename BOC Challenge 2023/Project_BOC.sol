@@ -1,4 +1,4 @@
-//For BOC competiton
+//BOC competiton
 //Project_V3.sol based on Project_V2.sol
 
 // SPDX-License-Identifier: MIT
@@ -247,12 +247,6 @@ pragma solidity ^0.8.7;
 
         reset_service_status(_addressPatient);
 
-    }
-
-    function my_service_fee() validAcc public view returns(uint){
-        require(msg.sender!=admin && msg.sender!=hospital,
-                "Only patient can chack his/her service fee");
-        return patient[msg.sender].service_fee;
     }
 
     //allows light clients to react on changes efficiently
