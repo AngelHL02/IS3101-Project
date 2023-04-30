@@ -1,4 +1,4 @@
-//BOC competiton
+//For BOC competiton
 //Project_V3.sol based on Project_V2.sol
 
 // SPDX-License-Identifier: MIT
@@ -41,7 +41,7 @@ pragma solidity ^0.8.7;
     address payable public hospital;
 
     mapping (address => Patient) public patient; 
-    mapping(address => mapping(uint => SignDetails)) public signs;
+    mapping(address => mapping(uint => SignDetails)) signs;
 
     uint public startTime;
 
@@ -249,6 +249,14 @@ pragma solidity ^0.8.7;
 
     }
 
+/*
+    function my_service_fee() validAcc public view returns(uint){
+        require(msg.sender!=admin && msg.sender!=hospital,
+                "Only patient can chack his/her service fee");
+        return patient[msg.sender].service_fee;
+    }
+*/
+
     //allows light clients to react on changes efficiently
     event paymentSettled(address from, address to, uint amount);
 
@@ -328,6 +336,14 @@ pragma solidity ^0.8.7;
         SignDetails memory sign = SignDetails(block.timestamp,_hash, _signature);
         signs[_address][patient[_address].signCount] = sign;
         patient[_address].signCount ++ ;
+    }
+
+    function retrieve_signs(address _address,uint8 _docNum) view public 
+        returns(uint256,bytes32,bytes memory){
+            _docNum--; //convert the entered 1-based input to 0-based
+        return (signs[_address][_docNum].timestamp,
+                signs[_address][_docNum].hash,
+                signs[_address][_docNum].signature);
     }
 
     event certifiedListUpdated();
