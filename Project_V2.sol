@@ -240,7 +240,7 @@ contract medical_V2{
     function confirm_request(address _addressPatient, uint _amount) accessedOnly public{
 
         patient[_addressPatient].stage_service = uint8(StageServiceRequest.Confirmed); //3
-        patient[_addressPatient].service_fee = _amount;
+        patient[_addressPatient].service_fee = _amount*(1 ether);
 
         //transform patient[_addressPatient].service_requested back to 0-based
         uint8 toService = patient[_addressPatient].service_requested - 1 ; 
@@ -251,24 +251,25 @@ contract medical_V2{
 
     }
 
-    function my_service_fee() validAcc public view returns(uint){
+    function my_service_fee() public view returns(uint){
         require(msg.sender!=admin && msg.sender!=hospital,
                 "Only patient can chack his/her service fee");
         return patient[msg.sender].service_fee;
     }
 
-    function make_payment(uint amount) patientOnly validAcc inState(StageServiceRequest.Confirmed) 
+    //Directly send payment to hospital
+    function make_payment() patientOnly validAcc inState(StageServiceRequest.Confirmed) 
             payable public{
         require(msg.value == patient[msg.sender].service_fee,"Incorrect Amount.");
         patient[msg.sender].stage_service = uint8(StageServiceRequest.Done); //4
 
         reset_service_status(msg.sender);
 
-        hospital.transfer(amount);
+        hospital.transfer(msg.value);
 
         patient[msg.sender].service_fee = 0;
 
-        emit paymentSettled(msg.sender,hospital,amount);
+        emit paymentSettled(msg.sender,hospital,msg.value);
 
     }
 
