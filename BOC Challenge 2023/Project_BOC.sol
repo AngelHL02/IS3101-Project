@@ -167,7 +167,8 @@ pragma solidity ^0.8.7;
         isPatient = false;
 
         //Activate the account after activation time of 1 minutes
-        if (block.timestamp > (startTime+ 1 minutes)) {
+        if (block.timestamp > (startTime+ 10 seconds)) {
+        //if (block.timestamp > (startTime+ 1 minutes)) {
 
             //Update the status of the respective account
             patient[_addressPatient].stage_acc = uint8(StageAcc.Acc_Activated); //1
@@ -260,18 +261,19 @@ pragma solidity ^0.8.7;
     //allows light clients to react on changes efficiently
     event paymentSettled(address from, address to, uint amount);
 
-    function make_payment(uint amount) patientOnly validAcc inState(StageServiceRequest.Confirmed) 
+    //Directly send payment to hospital
+    function make_payment() patientOnly validAcc inState(StageServiceRequest.Confirmed) 
             payable public{
         require(msg.value == patient[msg.sender].service_fee,"Incorrect Amount.");
         patient[msg.sender].stage_service = uint8(StageServiceRequest.Done); //4
 
         reset_service_status(msg.sender);
 
-        hospital.transfer(amount);
+        hospital.transfer(msg.value);
 
         patient[msg.sender].service_fee = 0;
 
-        emit paymentSettled(msg.sender,hospital,amount);
+        emit paymentSettled(msg.sender,hospital,msg.value);
 
     }
 
