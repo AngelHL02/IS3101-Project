@@ -1,3 +1,8 @@
+/*  V2
+    In this version, clients have to request for an account themselves,
+    then the admin would have to activate their account in order to request service etc
+*/
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
