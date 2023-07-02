@@ -1,5 +1,9 @@
-//For BOC competiton
-//Project_V3.sol based on Project_V2.sol
+/*
+    This project is based on Project_V2.sol with similar methodology.
+    Functions added:
+        - document register (hash + sign)
+        - retrieve datetime from timestamp
+*/
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.7;
