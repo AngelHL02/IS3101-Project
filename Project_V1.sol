@@ -1,3 +1,8 @@
+/*  V1
+    In this version, the admin have to register clients,
+    then activate their account one by one
+*/
+
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -168,7 +173,7 @@ contract medical{
         }
     }
 
-    function check_patient_info(address _addressPatient) accessedOnly view public
+    function check_info(address _addressPatient) view public
             returns(string memory,uint,bool,uint8,uint8,uint8){
 
         return (patient[_addressPatient].name,
@@ -263,6 +268,7 @@ contract medical{
 
     }
 
+/*  Initial Ver--Bugged
     function make_payment(address payable receiver, uint8 amount) validAcc inState(StageServiceRequest.Confirmed) 
             payable public{
         patient[msg.sender].stage_service = uint8(StageServiceRequest.Done); //4
@@ -277,6 +283,22 @@ contract medical{
 
         receiver.transfer(amount);
         emit Sent(msg.sender,receiver,amount);
+
+    }
+*/
+
+    function make_payment() validAcc inState(StageServiceRequest.Confirmed) 
+            payable public{
+        //require(msg.value == patient[msg.sender].service_fee,"Incorrect Amount.");
+        patient[msg.sender].stage_service = uint8(StageServiceRequest.Done); //4
+
+        reset_service_status(msg.sender);
+
+        hospital.transfer(msg.value);
+
+        //patient[msg.sender].service_fee = 0;
+
+        emit Sent(msg.sender,hospital,msg.value);
 
     }
 
@@ -318,7 +340,7 @@ contract medical{
     }
 
     //return the array containing the cumulative service count
-    function check_queue() accessedOnly public view returns(Service[] memory){
+    function check_queue() public view returns(Service[] memory){
         return serviceCount;
     }
 
